@@ -1,4 +1,4 @@
-FROM rhel7
+FROM centos
 
 MAINTAINER Chris Kim (me@chrishkim.com)
 
