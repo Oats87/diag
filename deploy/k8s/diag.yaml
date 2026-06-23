@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: diag
+  labels:
+    app: diag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: diag
+  template:
+    metadata:
+      labels:
+        app: diag
+    spec:
+      containers:
+        - name: diag
+          image: docker.io/oats87/diag:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          # Uncomment for raw-socket / firewall diagnostics (tcpdump, iptables, nmap):
+          # securityContext:
+          #   capabilities:
+          #     add: ["NET_ADMIN", "NET_RAW"]
+      terminationGracePeriodSeconds: 30
