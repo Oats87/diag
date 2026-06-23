@@ -1,0 +1,61 @@
+# Privileged node-diagnostics variant.
+#
+# Grants full access to the node it lands on: privileged container, host root
+# filesystem mounted at /host, and the host network/PID/IPC namespaces. Use it
+# to inspect and operate on the node itself, e.g.:
+#
+#   kubectl exec -it deploy/diag-privileged -- chroot /host bash   # become the node
+#   kubectl exec -it deploy/diag-privileged -- nsenter -t 1 -m -u -i -n -p bash
+#
+# A Deployment with replicas: 1 lands on ONE node. To target a specific node set
+# `nodeName` below. To get a pod on EVERY node, use a DaemonSet instead.
+#
+# WARNING: this is effectively root on the host. Most clusters block privileged
+# pods via Pod Security Admission — the target namespace must allow it, e.g.:
+#   kubectl label ns <ns> pod-security.kubernetes.io/enforce=privileged
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: diag-privileged
+  labels:
+    app: diag-privileged
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: diag-privileged
+  template:
+    metadata:
+      labels:
+        app: diag-privileged
+    spec:
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # Pin to a specific node for targeted node diagnostics:
+      # nodeName: <node-name>
+      tolerations:
+        - operator: Exists   # allow scheduling onto tainted / control-plane nodes
+      containers:
+        - name: diag
+          image: docker.io/oats87/diag:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+      terminationGracePeriodSeconds: 30

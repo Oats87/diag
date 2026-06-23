@@ -39,6 +39,26 @@ Some tools (`tcpdump`, `iptables`, raw-socket `nmap` scans) need extra Linux
 capabilities. Uncomment the `securityContext` block in `deploy/k8s/diag.yaml` to
 grant `NET_ADMIN` / `NET_RAW`.
 
+### Privileged node diagnostics
+
+For debugging the node itself, `deploy/k8s/diag-privileged.yaml` runs a
+privileged pod with the host root filesystem mounted at `/host` and the host
+network / PID / IPC namespaces:
+
+```sh
+kubectl apply -f deploy/k8s/diag-privileged.yaml
+kubectl exec -it deploy/diag-privileged -- chroot /host bash      # become the node
+# or enter the node's namespaces directly:
+kubectl exec -it deploy/diag-privileged -- nsenter -t 1 -m -u -i -n -p bash
+kubectl delete -f deploy/k8s/diag-privileged.yaml
+```
+
+A `Deployment` with one replica lands on a single node — set `nodeName` in the
+manifest to target a specific one, or switch to a `DaemonSet` to get a pod on
+every node. This pod is effectively root on the host; the namespace must permit
+privileged pods (`kubectl label ns <ns> pod-security.kubernetes.io/enforce=privileged`
+if Pod Security Admission is enforced).
+
 ## Building locally
 
 Single-arch (loads into your local Docker):
